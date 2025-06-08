@@ -2,10 +2,12 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Thread, Message
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username']
+
 
 class ThreadSerializer(serializers.ModelSerializer):
     participants = UserSerializer(many=True, read_only=True)
@@ -21,6 +23,7 @@ class ThreadSerializer(serializers.ModelSerializer):
         if len(participants) != 2:
             raise serializers.ValidationError("Thread must have exactly 2 participants.")
         return participants
+
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)

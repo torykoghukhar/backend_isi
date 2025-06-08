@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
 def register_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
