@@ -1,17 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.response import Response  
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth.models import User
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from .models import Thread, Message
 from .serializers import ThreadSerializer, MessageSerializer
 from django.shortcuts import render
 
+
 def home_view(request):
     return render(request, 'home.html')
+
 
 class ThreadViewSet(viewsets.ModelViewSet):
     queryset = Thread.objects.all()
