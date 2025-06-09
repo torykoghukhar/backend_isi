@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -15,41 +15,20 @@ def home_view(request):
 
 class ThreadViewSet(viewsets.ModelViewSet):
     queryset = Thread.objects.all()
-    serializer_class = ThreadSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return self.request.user.threads.all()
 
-    def create(self, request, *args, **kwargs):
-        user_ids = request.data.get("participant_ids", [])
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ThreadSerializer
+        return ThreadSerializer
 
-        if not isinstance(user_ids, list) or not all(isinstance(uid, int) for uid in user_ids):
-            return Response({'error': 'participant_ids must be a list of user IDs.'}, status=400)
-
-        user_ids.append(request.user.id)
-        user_ids = list(set(user_ids))
-
-        if len(user_ids) != 2:
-            return Response({'error': 'Thread must contain exactly 2 unique participants.'}, status=400)
-
-        existing_threads = Thread.objects.filter(participants__id=user_ids[0])\
-                                         .filter(participants__id=user_ids[1])
-        for thread in existing_threads:
-            if set(thread.participants.values_list("id", flat=True)) == set(user_ids):
-                serializer = self.get_serializer(thread)
-                return Response(serializer.data)
-
-        thread = Thread.objects.create()
-        thread.participants.set(user_ids)
-        serializer = self.get_serializer(thread)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def destroy(self, request, *args, **kwargs):
-        thread = self.get_object()
-        if request.user not in thread.participants.all():
-            return Response({'error': 'Access denied.'}, status=403)
-        return super().destroy(request, *args, **kwargs)
+    def perform_destroy(self, instance):
+        if self.request.user not in instance.participants.all():
+            raise PermissionError("Access denied.")
+        instance.delete()
 
 
 class MessageViewSet(viewsets.ModelViewSet):
