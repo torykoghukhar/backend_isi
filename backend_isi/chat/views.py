@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 
 from .models import Thread, Message
@@ -37,10 +38,9 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         thread_id = self.kwargs.get('thread_pk')
-
         thread = get_object_or_404(Thread, id=thread_id)
         if self.request.user not in thread.participants.all():
-            return Message.objects.none()
+            raise PermissionDenied("You are not a participant of this thread.")
         return Message.objects.filter(thread=thread).order_by('created')
 
     def perform_create(self, serializer):
@@ -48,7 +48,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         thread = get_object_or_404(Thread, id=thread_id)
 
         if self.request.user not in thread.participants.all():
-            raise PermissionError("You cannot post messages to this thread.")
+            raise PermissionDenied("You are not a participant of this thread.")
 
         serializer.save(sender=self.request.user, thread=thread)
 
@@ -63,17 +63,11 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='unread-count')
     def unread_count(self, request, thread_pk=None):
-        try:
-            thread = Thread.objects.get(id=thread_pk)
-        except Thread.DoesNotExist:
-            return Response({'error': 'Thread does not exist.'}, status=404)
-
+        thread = get_object_or_404(Thread, id=thread_pk)
         if request.user not in thread.participants.all():
             return Response({'error': 'Access denied.'}, status=403)
-
         count = Message.objects.filter(
             thread=thread,
             is_read=False
         ).exclude(sender=request.user).count()
-
         return Response({'unread_count': count})
